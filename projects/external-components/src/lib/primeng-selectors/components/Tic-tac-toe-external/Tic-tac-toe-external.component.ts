@@ -9,6 +9,8 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
   - Players alternate turns by clicking cells
   - Shows winner or draw when game ends
   - Board resets on button click
+  - X symbol appears green, O symbol appears red
+  - Game background is black
 */
 
 @Component({
@@ -23,7 +25,12 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
           (click)="makeMove(i)"
           class="cell"
         >
-          {{ cell }}
+          <span 
+            [ngClass]="{
+              'x-symbol': cell === 'X',
+              'o-symbol': cell === 'O'
+            }"
+          >{{ cell }}</span>
         </button>
       </div>
       <div class="status" *ngIf="winner !== null">
@@ -40,6 +47,9 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
       align-items: center;
       font-family: Arial, sans-serif;
       margin-top: 24px;
+      background: #000;
+      min-height: 100vh;
+      padding-bottom: 40px;
     }
     .board {
       display: grid;
@@ -52,19 +62,30 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
       height: 60px;
       font-size: 2rem;
       cursor: pointer;
-      background: #f0f0f0;
+      background: #222;
       border: 2px solid #666;
       border-radius: 6px;
       transition: background 0.2s;
+      color: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
     }
     .cell:disabled {
-      background: #ddd;
+      background: #333;
       cursor: default;
+    }
+    .x-symbol {
+      color: #4caf50; /* Green */
+    }
+    .o-symbol {
+      color: #f44336; /* Red */
     }
     .status {
       font-size: 1.2rem;
       margin-bottom: 10px;
-      color: #333;
+      color: #fff;
     }
     .reset-btn {
       padding: 6px 18px;
@@ -78,6 +99,9 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
     }
     .reset-btn:hover {
       background: #1565c0;
+    }
+    h2 {
+      color: #fff;
     }
   `]
 })
@@ -101,9 +125,9 @@ export class TicTacToeComponent extends CommonExternalComponent {
 
   checkWinner(): boolean {
     const lines: number[][] = [
-      [0,1,2], [3,4,5], [6,7,8], // rows
-      [0,3,6], [1,4,7], [2,5,8], // columns
-      [0,4,8], [2,4,6]           // diagonals
+      [0,1,2], [3,4,5], [6,7,8],
+      [0,3,6], [1,4,7], [2,5,8],
+      [0,4,8], [2,4,6]
     ];
     return lines.some((line: number[]) =>
       this.board[line[0]] === this.currentPlayer &&
