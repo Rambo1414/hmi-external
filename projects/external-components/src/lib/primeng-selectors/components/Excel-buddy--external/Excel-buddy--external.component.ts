@@ -1,11 +1,14 @@
 import { Component } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { CommonExternalComponent } from '../common-external/common-external.component';
 
 /*
   Features:
   - User input for Excel-related questions.
-  - Displays answers to Excel queries (mocked, replace with API integration if needed).
-  - Simple and clean UI for question/answer interaction.
+  - Integrates with Groq API (Llama3 model) using provided key for real-time answers.
+  - Shows loading indicator while waiting for response.
+  - Strict type checking on all variables.
+  - Clean, responsive UI for chat interaction.
 */
 
 @Component({
@@ -23,11 +26,17 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
           placeholder="Type your Excel question here..."
           class="query-input"
         />
-        <button type="submit" [disabled]="!userQuery.trim()" class="submit-btn">Ask</button>
+        <button type="submit" [disabled]="!userQuery.trim() || loading" class="submit-btn">
+          {{ loading ? 'Thinking...' : 'Ask' }}
+        </button>
       </form>
       <div *ngIf="answer" class="answer-section">
         <strong>Answer:</strong>
         <p>{{ answer }}</p>
+      </div>
+      <div *ngIf="errorMsg" class="error-section">
+        <strong>Error:</strong>
+        <p>{{ errorMsg }}</p>
       </div>
     </div>
   `,
@@ -81,30 +90,72 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
       color: #333;
       margin-top: 12px;
     }
+    .error-section {
+      background: #ffebee;
+      border-left: 4px solid #c62828;
+      padding: 14px 18px;
+      border-radius: 6px;
+      color: #b71c1c;
+      margin-top: 12px;
+    }
   `]
 })
 export class ExcelBuddyComponent extends CommonExternalComponent {
   userQuery: string = '';
   answer: string = '';
+  errorMsg: string = '';
+  loading: boolean = false;
 
-  submitQuery(): void {
-    // Mocked logic for demonstration; replace with real service/API call as needed
-    this.answer = this.getMockAnswer(this.userQuery.trim());
+  private readonly groqApiUrl: string = 'https://api.groq.com/openai/v1/chat/completions';
+  private readonly groqApiKey: string = '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';
+
+  constructor(private http: HttpClient) {
+    super();
   }
 
-  private getMockAnswer(query: string): string {
-    // Basic examples; extend or connect to a backend/AI for real answers
-    if (!query) return '';
-    const q = query.toLowerCase();
-    if (q.includes('sum')) {
-      return 'Use the SUM function: =SUM(A1:A10)';
+  submitQuery(): void {
+    if (!this.userQuery.trim()) {
+      return;
     }
-    if (q.includes('vlookup')) {
-      return 'VLOOKUP syntax: =VLOOKUP(lookup_value, table_array, col_index_num, [range_lookup])';
-    }
-    if (q.includes('pivot table')) {
-      return 'To create a Pivot Table: Select data > Insert > PivotTable.';
-    }
-    return 'Sorry, I am a demo bot. Please specify your Excel question in detail!';
+    this.answer = '';
+    this.errorMsg = '';
+    this.loading = true;
+
+    const headers: HttpHeaders = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${this.groqApiKey}`
+    });
+
+    const body: Record<string, unknown> = {
+      model: 'llama3-8b-8192',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert Excel assistant. Answer concisely and clearly for Excel-related queries.'
+        },
+        {
+          role: 'user',
+          content: this.userQuery.trim()
+        }
+      ],
+      temperature: 0.2,
+      max_tokens: 512
+    };
+
+    this.http.post<{choices: {message: {content: string}}[]}>(
+      this.groqApiUrl,
+      body,
+      { headers }
+    ).subscribe({
+      next: (response) => {
+        const reply: string | undefined = response?.choices?.[0]?.message?.content;
+        this.answer = reply ? reply.trim() : 'No answer received.';
+        this.loading = false;
+      },
+      error: (err: unknown) => {
+        this.errorMsg = 'Failed to get a response. Please try again later.';
+        this.loading = false;
+      }
+    });
   }
 }
